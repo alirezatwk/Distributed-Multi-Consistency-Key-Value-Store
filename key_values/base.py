@@ -1,0 +1,2 @@
+class KeyValueBase:
+    pass
