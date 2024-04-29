@@ -56,5 +56,11 @@ class EventualConsistency:
         self.storage[key] = value
         return 'LOCAL-SET is done'
 
-    def close(self):
+    def local_get(self, key: str, value: str) -> str:
+        pass
+
+    def ack(self, data: str) -> str:
+        pass
+
+    def close(self) -> None:
         self.running = False

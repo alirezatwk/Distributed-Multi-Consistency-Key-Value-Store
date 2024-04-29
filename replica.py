@@ -3,7 +3,7 @@ import threading
 from typing import List
 
 from configs import MESSAGE_SIZE
-from key_values import EventualConsistency
+from key_values import EventualConsistency, LinearizableConsistency
 
 
 class Replica:
@@ -19,6 +19,9 @@ class Replica:
         if key_value_type == 'Eventual':
             self.consistency = EventualConsistency(host=self.host, own_port=self.port, ports=self.replica_ports,
                                                    waiting_time=waiting_time, message_size=message_size)
+        elif key_value_type == 'Linearizable':
+            self.consistency = LinearizableConsistency(host=self.host, own_port=self.port, ports=self.replica_ports,
+                                                       waiting_time=waiting_time, message_size=message_size)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind((self.host, self.port))
@@ -38,10 +41,16 @@ class Replica:
             response = self.consistency.get(key=info)
             return response
         elif command == 'LOCAL-SET':
-            key, value = info.split()
-            response = self.consistency.local_set(key=key, value=value)
+            separated_info = info.split()
+            response = self.consistency.local_set(*separated_info)
             return response
-
+        elif command == 'LOCAL-GET':
+            separated_info = info.split()
+            response = self.consistency.local_get(*separated_info)
+            return response
+        elif command == 'ACK':
+            response = self.consistency.ack(data=info)
+            return response
         return 'Command not found'
 
     def process_socket(self, message_socket: socket.socket) -> None:
