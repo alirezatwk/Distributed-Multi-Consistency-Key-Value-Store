@@ -1,3 +1,4 @@
+import threading
 import time
 
 from client import Client
@@ -5,8 +6,8 @@ from configs import HOST, REPLICA_PORT, WAITING_TIME
 from replica import Replica
 
 
-def test_not_found():
-    start_port = 9921
+def test_same_value():
+    start_port = 4432
     client_num = 2
     replica_num = 3
 
@@ -15,7 +16,7 @@ def test_not_found():
         id=ind,
         host=HOST,
         port=start_port + ind,
-        key_value_type='Eventual',
+        key_value_type='Sequential',
         replica_ports=replica_ports,
         waiting_time=WAITING_TIME,
     ) for ind in range(replica_num)]
@@ -23,20 +24,22 @@ def test_not_found():
     clients = [Client(host=HOST, replica_ports=replica_ports) for _ in range(client_num)]
 
     clients[0].set(replica_id=0, key='a', value='7')
-    time.sleep(1)
-    for client in clients:
-        for replica_id in range(replica_num):
-            response = client.get(replica_id=replica_id, key='a')
-            if replica_id == 0:
-                assert response == '7', 'replica did not save the value'
-            else:
-                assert response == 'Not-found', 'replica should not have the key'
+    time.sleep(5)
+
+    for replica_id in range(replica_num):
+        response = clients[1].get(replica_id=replica_id, key='a')
+        assert response == '7', 'replica did not save the value'
+
     for replica in replicas:
         replica.close()
 
 
-def test_found():
-    start_port = 7533
+def set_key_value(client):
+    client.set(replica_id=0, key='a', value='7')
+
+
+def test_different_from_linearizable():
+    start_port = 8821
     client_num = 2
     replica_num = 3
 
@@ -45,20 +48,22 @@ def test_found():
         id=ind,
         host=HOST,
         port=start_port + ind,
-        key_value_type='Eventual',
+        key_value_type='Sequential',
         replica_ports=replica_ports,
         waiting_time=WAITING_TIME,
     ) for ind in range(replica_num)]
 
     clients = [Client(host=HOST, replica_ports=replica_ports) for _ in range(client_num)]
 
-    clients[0].set(replica_id=0, key='a', value='7')
+    thread = threading.Thread(target=set_key_value, args=(clients[0],))
+    thread.start()
+
     time.sleep(7)
 
-    for client in clients:
-        for replica_id in range(replica_num):
-            response = client.get(replica_id=replica_id, key='a')
-            if replica_id == 0:
-                assert response == '7', f'replica {replica_id} did not save the value'
+    response = clients[1].get(replica_id=1, key='a')
+    assert response == 'Not-found', 'replica saved the value somehow'
+
+    thread.join()
+
     for replica in replicas:
         replica.close()

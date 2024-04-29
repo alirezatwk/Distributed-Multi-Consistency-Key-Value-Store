@@ -7,7 +7,7 @@ from typing import List
 from configs import MESSAGE_SIZE
 
 
-class LinearizableConsistency:
+class SequentialConsistency:
     def __init__(self, host: str, own_port: int, ports: List[int], waiting_time: int, message_size: int = MESSAGE_SIZE):
         self.host = host
         self.own_port = own_port
@@ -41,6 +41,8 @@ class LinearizableConsistency:
             continue
         command, info = data.split(' ', 1)
         if command == 'LOCAL-SET':
+            # key, value, clock = info.split()
+            # self.storage[key] = value
             return 'SET command is done'
         elif command == 'LOCAL-GET':
             key, clock = info.split()
@@ -57,10 +59,9 @@ class LinearizableConsistency:
         return response
 
     def get(self, key: str) -> str:
-        self.clock += 1
-        data = f'LOCAL-GET {key} {self.clock}'
-        response = self.totally_broadcast(data=data)
-        return response
+        if key in self.storage:
+            return self.storage[key]
+        return 'Not-found'
 
     def local_set(self, key: str, value: str, clock: str) -> str:
         clock = int(clock)

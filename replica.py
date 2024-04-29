@@ -3,7 +3,7 @@ import threading
 from typing import List
 
 from configs import MESSAGE_SIZE
-from key_values import EventualConsistency, LinearizableConsistency
+from key_values import EventualConsistency, LinearizableConsistency, SequentialConsistency
 
 
 class Replica:
@@ -22,6 +22,9 @@ class Replica:
         elif key_value_type == 'Linearizable':
             self.consistency = LinearizableConsistency(host=self.host, own_port=self.port, ports=self.replica_ports,
                                                        waiting_time=waiting_time, message_size=message_size)
+        elif key_value_type == 'Sequential':
+            self.consistency = SequentialConsistency(host=self.host, own_port=self.port, ports=self.replica_ports,
+                                                     waiting_time=waiting_time, message_size=message_size)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind((self.host, self.port))
