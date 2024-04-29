@@ -1,7 +1,7 @@
 import time
 
 from client import Client
-from configs import HOST, REPLICA_PORT, WAITING_TIME
+from configs import HOST, WAITING_TIME
 from replica import Replica
 
 
