@@ -23,9 +23,13 @@ class CasualConsistency:
         self.message_size = message_size
 
         self.queue = Queue()
+        self.setter_list = []
         self.running = True
 
         thread = threading.Thread(target=self.sender)
+        thread.start()
+
+        thread = threading.Thread(target=self.setter)
         thread.start()
 
     def send(self, port: int, data) -> str:
@@ -35,6 +39,19 @@ class CasualConsistency:
         response = send_socket.recv(self.message_size).decode()
         return response
 
+    def valid_vector_clock(self, vector_clock):
+        found_one = False
+        for port in self.ports:
+            if vector_clock[port] <= self.vector_clock[port]:
+                continue
+            if vector_clock[port] == self.vector_clock[port] + 1:
+                if found_one:
+                    return False
+                found_one = True
+            if vector_clock[port] > self.vector_clock[port] + 1:
+                return False
+        return True
+
     def sender(self):
         while self.running:
             time.sleep(self.waiting_time)
@@ -42,12 +59,25 @@ class CasualConsistency:
                 port, data = self.queue.get()
                 self.send(port=port, data=data)
 
+    def setter(self):
+        while self.running:
+            removing_list = []
+            for x in self.setter_list:
+                vector_clock, key, value = x
+                if self.valid_vector_clock(vector_clock):
+                    self.storage[key] = value
+                    removing_list.append(x)
+                    self.vector_clock = vector_clock
+            for x in removing_list:
+                self.setter_list.remove(x)
+
     def set(self, key: str, value: str) -> str:
+        self.vector_clock[self.own_port] += 1
         self.storage[key] = value
         for port in self.ports:
             if port == self.own_port:
                 continue
-            data = f'LOCAL-SET {key} {value}'
+            data = f'LOCAL-SET {key} {value} {self.vector_clock}'
             self.queue.put((port, data))
         return 'SET command is done'
 
@@ -56,8 +86,10 @@ class CasualConsistency:
             return self.storage[key]
         return 'Not-found'
 
-    def local_set(self, key: str, value: str) -> str:
-        self.storage[key] = value
+    def local_set(self, key: str, value: str, *args) -> str:
+        joined = ''.join(args)
+        vector_clock = eval(joined)
+        self.setter_list.append([vector_clock, key, value])
         return 'LOCAL-SET is done'
 
     def local_get(self, key: str, value: str) -> str:

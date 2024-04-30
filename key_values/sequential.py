@@ -41,8 +41,6 @@ class SequentialConsistency:
             continue
         command, info = data.split(' ', 1)
         if command == 'LOCAL-SET':
-            # key, value, clock = info.split()
-            # self.storage[key] = value
             return 'SET command is done'
         elif command == 'LOCAL-GET':
             key, clock = info.split()
